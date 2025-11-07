@@ -10,7 +10,7 @@ class Post:
         self.update = update
 
     #Updates a blog posts text and title if they are provided
-    def update_post(self, updated_text=None, updated_title=None):
+    def update_post(self, updated_title=None, updated_text=None, updated_time=None):
         updated = False
         if updated_text is not None:
             self.text = updated_text
@@ -22,7 +22,7 @@ class Post:
 
         #if post is updated, changes update time to current time
         if updated == True:
-            self.update = datetime.now()
+            self.update = updated_time
             return True
         else:
             return False
