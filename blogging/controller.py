@@ -1,26 +1,32 @@
-"""
-controller.py
-Controller class handles blog and post management.
-"""
-
 from blogging.blog import Blog
 from blogging.post import Post
 from datetime import datetime
 
 class Controller:
-    """Controls login, blog, and post interactions."""
+    """
+    Controller: holds login state and manages blogs/posts.
+    Step 1: just login/logout and basic attributes.
+    """
 
     def __init__(self):
-        """Initialize controller with no blogs and not logged in."""
         self.logged_in = False
-        self.blog = []
-        self.current_blog = None
+        self.blogs = []           # list[Blog]
+        self.current_blog = None  # Blog or None
+        self.next_post_code = 1   # global post id counter across all blogs
 
-    def login(self, user, password):
-        """Logs a user in if credentials match."""
+    # ---------- LOGIN / LOGOUT ----------
+    def login(self, username, password):
+        # only one valid pair per spec/tests
         if self.logged_in:
             return False
-        if user == "user" and password == "blogging2025":
+        if username == "user" and password == "blogging2025":
             self.logged_in = True
             return True
         return False
+
+    def logout(self):
+        if not self.logged_in:
+            return False
+        self.logged_in = False
+        self.current_blog = None
+        return True
