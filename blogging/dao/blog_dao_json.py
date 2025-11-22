@@ -1,89 +1,166 @@
 import json
 import os
+
 from blogging.blog import Blog
 from blogging.configuration import Configuration
 from blogging.dao.blog_dao import BlogDAO
 
 
 class BlogEncoder(json.JSONEncoder):
-    """JSON encoder for Blog objects."""
+    """Helper to encode Blog objects as JSON."""
+
     def default(self, obj):
         if isinstance(obj, Blog):
             return {
                 "id": obj.id,
                 "name": obj.name,
                 "url": obj.url,
-                "email": obj.email
+                "email": obj.email,
             }
-        return json.JSONEncoder.default(self, obj)
+        return super().default(obj)
 
 
 class BlogDecoder(json.JSONDecoder):
-    """JSON decoder for Blog objects."""
+    """Helper to decode Blog objects from JSON."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(object_hook=self.object_hook, *args, **kwargs)
 
-    def object_hook(self, d):
-        if {"id", "name", "url", "email"} <= d.keys():
-            return Blog(d["id"], d["name"], d["url"], d["email"])
-        return d
+    def object_hook(self, obj):
+        if {"id", "name", "url", "email"}.issubset(obj.keys()):
+            return Blog(obj["id"], obj["name"], obj["url"], obj["email"])
+        return obj
 
 
 class BlogDAOJSON(BlogDAO):
+    """
+    Blog DAO with optional persistence.
 
-    def __init__(self):
+    - If autosave == False:
+        * everything is purely in memory
+        * we ignore any existing blogs.json on disk
+    - If autosave == True:
+        * blogs are loaded from blogs.json in the constructor
+        * every create/update/delete writes the whole list back to file
+    """
+
+    def __init__(self, autosave=True):
         cfg = Configuration()
+        self.autosave = autosave
         self.file_path = cfg.__class__.blogs_file
 
-        # ensure file exists
-        if not os.path.exists(self.file_path):
-            with open(self.file_path, "w") as f:
-                json.dump([], f)
+        # in-memory list of Blog objects
+        self._blogs = []
+
+        if self.autosave:
+            # make sure the directory exists
+            dir_name = os.path.dirname(self.file_path)
+            if dir_name and not os.path.exists(dir_name):
+                os.makedirs(dir_name, exist_ok=True)
+
+            # if file exists, load it; otherwise create empty file
+            if os.path.exists(self.file_path):
+                self._blogs = self._read_all()
+            else:
+                self._write_all([])
+
+        # when autosave is False we simply start with an empty list and
+        # never touch the file system – controller tests rely on that.
+
+    # ---------- internal helpers ----------
 
     def _read_all(self):
-        with open(self.file_path, "r") as f:
-            return json.load(f, cls=BlogDecoder)
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                data = json.load(f, cls=BlogDecoder)
+            # json.load may return a single Blog or a list; normalize to list
+            if isinstance(data, list):
+                return [b for b in data if isinstance(b, Blog)]
+            elif isinstance(data, Blog):
+                return [data]
+            else:
+                return []
+        except (IOError, json.JSONDecodeError):
+            # if something goes wrong, treat as empty collection
+            return []
 
     def _write_all(self, blogs):
-        with open(self.file_path, "w") as f:
+        if not self.autosave:
+            # in non-persistent mode we never touch the disk
+            return
+        with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(blogs, f, cls=BlogEncoder, indent=2)
 
-    # ---------- DAO interface methods ----------
+    # ---------- DAO operations ----------
 
     def search_blog(self, key):
-        blogs = self._read_all()
-        for b in blogs:
-            if b.id == key:
+        """Return a blog whose id, name or url matches key, or None."""
+        for b in self._blogs:
+            if b.id == key or b.name == key or b.url == key:
                 return b
         return None
 
     def create_blog(self, blog):
-        blogs = self._read_all()
-        blogs.append(blog)
-        self._write_all(blogs)
+        """Append a new blog and persist if autosave is enabled."""
+        self._blogs.append(blog)
+        self._write_all(self._blogs)
         return True
 
     def retrieve_blogs(self, search_string):
-        blogs = self._read_all()
-        keyword = (search_string or "").lower()
-        return [b for b in blogs if keyword in b.name.lower()]
+        """
+        Return blogs whose id/name/url/email contains search_string
+        (case-insensitive). Empty search_string returns all blogs.
+        """
+        if not search_string:
+            return list(self._blogs)
 
-    def update_blog(self, key, blog):
-        blogs = self._read_all()
-        for i, b in enumerate(blogs):
+        s = str(search_string).lower()
+        result = []
+        for b in self._blogs:
+            if (
+                s in str(b.id).lower()
+                or s in b.name.lower()
+                or s in b.url.lower()
+                or s in b.email.lower()
+            ):
+                result.append(b)
+        return result
+
+    def update_blog(self, key, new_id, new_name, new_url, new_email):
+        """
+        Replace the blog whose id == key with a new Blog.
+        Returns True if something was updated, False otherwise.
+        """
+        updated = False
+        for i, b in enumerate(self._blogs):
             if b.id == key:
-                blogs[i] = blog
-                self._write_all(blogs)
-                return True
-        return False
+                self._blogs[i] = Blog(new_id, new_name, new_url, new_email)
+                updated = True
+                break
+
+        if updated:
+            self._write_all(self._blogs)
+        return updated
 
     def delete_blog(self, key):
-        blogs = self._read_all()
-        new_list = [b for b in blogs if b.id != key]
-        if len(new_list) == len(blogs):
-            return False
-        self._write_all(new_list)
-        return True
+        """
+        Delete the blog whose id == key.
+        Returns True if something was deleted, False otherwise.
+        """
+        deleted = False
+        new_list = []
+        for b in self._blogs:
+            if not deleted and b.id == key:
+                deleted = True
+                continue
+            new_list.append(b)
+
+        if deleted:
+            self._blogs = new_list
+            self._write_all(self._blogs)
+
+        return deleted
 
     def list_blogs(self):
-        return self._read_all()
+        """Return a shallow copy of the current blog list."""
+        return list(self._blogs)
