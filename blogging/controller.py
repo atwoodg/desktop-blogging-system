@@ -127,6 +127,10 @@ class Controller:
         if blog is None:
             raise IllegalOperationException("cannot update blog with an ID that is not registered")
 
+        #cannot update current blog
+        if self.current_blog is not None and self.current_blog.id == old_id:
+            raise IllegalOperationException("cannot update the current blog")
+
         # new id must be unused (unless unchanged)
         if new_id != old_id and self.blog_dao.search_blog(new_id):
             raise IllegalOperationException("cannot update blog with a duplicated ID")
@@ -145,6 +149,10 @@ class Controller:
         if blog is None:
             # id not registered
             raise IllegalOperationException("cannot delete blog with an ID that is not registered")
+
+        #ensure blog deletion is not current blog
+        if self.current_blog is not None and self.current_blog.id == id:
+            raise IllegalOperationException("cannot delete the current blog")
 
         return self.blog_dao.delete_blog(id)
 
