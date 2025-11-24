@@ -44,10 +44,11 @@ class PostDAOPickle(PostDAO):
     # ---------- internal helpers ----------
 
     def _file_name(self, code):
+        """Returns full path to blogs posts file"""
         return os.path.join(self.path, f"{code}{self.ext}")
 
     def _load(self):
-
+        """Load all posts for this blog from its .dat file and update code counter"""
         try:
             with open(self._file, "rb") as f:
                 content = pickle.load(f)
@@ -69,7 +70,7 @@ class PostDAOPickle(PostDAO):
         return list(self._posts)
 
     def _write(self, posts):
-
+        """write current post list to blogs .dat file if autosave enabled"""
         if not self.autosave:
             return True
 
@@ -77,6 +78,7 @@ class PostDAOPickle(PostDAO):
             with open(self._file, "wb") as f:
                 pickle.dump(self._posts, f)
             return True
+
         except Exception:
             return False
 

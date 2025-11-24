@@ -9,10 +9,8 @@ class Blog:
         self.url = url
         self.email = email
         self.dao = PostDAOPickle(self)
-
         autosave = Configuration.autosave
         self.post_dao = PostDAOPickle(self, autosave)
-        # self.posts = self.post_dao._posts
 
     def add_post(self, post):
         return self.post_dao.create_post(post)
