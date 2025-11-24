@@ -1,3 +1,6 @@
+from blogging.dao.post_dao_pickle import PostDAOPickle
+from blogging.configuration import Configuration
+
 class Blog:
 
     def __init__(self, id, name, url, email):
@@ -5,30 +8,26 @@ class Blog:
         self.name = name
         self.url = url
         self.email = email
-        self.posts = []
+        self.dao = PostDAOPickle(self)
 
+        autosave = Configuration.autosave
+        self.post_dao = PostDAOPickle(self, autosave)
+        # self.posts = self.post_dao._posts
 
     def add_post(self, post):
-        self.posts.append(post)
-        return True
+        return self.post_dao.create_post(post)
 
     def get_post(self, code):
-        for p in self.posts:
-            if p.code == code:
-                return p
-        return None
+        return self.post_dao.search_post(code)
 
     def list_posts(self):
-        return sorted(self.posts, key=lambda p: p.code, reverse=True)
+        return self.post_dao.list_posts()
 
     def remove_post(self, code):
-        before = len(self.posts)
-        self.posts = [p for p in self.posts if p.code != code]
-        return len(self.posts) != before
+        return self.post_dao.delete_post(code)
 
     def retrieve_post(self, key):
-        key = key.lower()
-        return [p for p in self.posts if key in p.title.lower() or key in p.text.lower()]
+        return self.post_dao.retrieve_posts(key)
 
     def __str__(self):
         return f"Blog ID: {self.id}\nName: {self.name}\nURL: {self.url}\nEmail: {self.email}"

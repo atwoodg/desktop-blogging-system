@@ -75,7 +75,7 @@ class PostDAOPickle(PostDAO):
 
         try:
             with open(self._file, "wb") as f:
-                pickle.dump(list(posts), f)
+                pickle.dump(self._posts, f)
             return True
         except Exception:
             return False
@@ -159,17 +159,19 @@ class PostDAOPickle(PostDAO):
 
     def delete_post(self, key):
         """Delete post with given code. Returns True if deleted."""
-        for i, p in enumerate(self._posts):
+        deleted = False
+        new_list = []
+        for p in self._posts:
+            if not deleted and p.code == key:
+                deleted = True
+                continue
+            new_list.append(p)
 
-            if p.code == key:
-                del self._posts[i]
-
-                #persist list
-                if self.autosave:
-                    return self._write(self._posts)
-                return True
-
-        return False
+        if deleted:
+            self._posts = new_list
+            if self.autosave:
+                self._write(self._posts)
+        return deleted
 
     def list_posts(self):
         """
@@ -177,10 +179,4 @@ class PostDAOPickle(PostDAO):
         For determinism we return them sorted by code ASC;
         the controller will sort DESC where needed.
         """
-        if not self.autosave:
-            posts = list(self._posts)
-        else:
-            posts = self._load_all_from_disk()
-
-        posts.sort(key=lambda p: p.code)
-        return posts
+        return sorted(self._posts, key = lambda p: p.code)
