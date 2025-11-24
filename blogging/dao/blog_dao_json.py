@@ -4,33 +4,8 @@ import os
 from blogging.blog import Blog
 from blogging.configuration import Configuration
 from blogging.dao.blog_dao import BlogDAO
-
-
-class BlogEncoder(json.JSONEncoder):
-    """Helper to encode Blog objects as JSON."""
-
-    def default(self, obj):
-        if isinstance(obj, Blog):
-            return {
-                "id": obj.id,
-                "name": obj.name,
-                "url": obj.url,
-                "email": obj.email,
-            }
-        return super().default(obj)
-
-
-class BlogDecoder(json.JSONDecoder):
-    """Helper to decode Blog objects from JSON."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=self.object_hook, *args, **kwargs)
-
-    def object_hook(self, obj):
-        if {"id", "name", "url", "email"}.issubset(obj.keys()):
-            return Blog(obj["id"], obj["name"], obj["url"], obj["email"])
-        return obj
-
+from blogging.dao.blog_encoder import BlogEncoder
+from blogging.dao.blog_decoder import BlogDecoder
 
 class BlogDAOJSON(BlogDAO):
     """

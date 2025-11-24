@@ -13,57 +13,75 @@ class PostDAOPickle(PostDAO):
     - If autosave == False:
         * posts live only in memory (used by controller unit tests)
     - If autosave == True:
-        * each post is stored in its own .dat file under records_path
+        * each blog is stored in its own .dat file under records_path
+        * .dat file contains list of post objects
         * collections are loaded from disk when needed
     """
 
-    def __init__(self, autosave=True):
+    def __init__(self, blog, autosave=True):
         cfg = Configuration()
         self.autosave = autosave
         self.path = cfg.__class__.records_path
         self.ext = cfg.__class__.records_extension
+        self.blog = blog
 
         # in-memory list of posts for non-persistent mode
         self._posts = []
 
+        # code counter
+        self._next_code = 1
+
+        os.makedirs(self.path, exist_ok=True)
+
+        self._file = self._file_name(self.blog.id)
+
         if self.autosave:
-            os.makedirs(self.path, exist_ok=True)
+            if os.path.exists(self._file):
+                self._load()
+            else:
+                self._write([])
 
     # ---------- internal helpers ----------
 
     def _file_name(self, code):
+        """Returns full path to blogs posts file"""
         return os.path.join(self.path, f"{code}{self.ext}")
 
-    def _load_single(self, code):
-        """Load a single post from disk by code (persistent mode only)."""
-        file_name = self._file_name(code)
-        if not os.path.exists(file_name):
-            return None
+    def _load(self):
+        """Load all posts for this blog from its .dat file and update code counter"""
         try:
-            with open(file_name, "rb") as f:
-                return pickle.load(f)
+            with open(self._file, "rb") as f:
+                content = pickle.load(f)
+            if isinstance(content, list):
+                self._posts = [p for p in content if isinstance(p, Post)]
+            else: self._posts = []
+
         except Exception:
             return None
 
+        if len(self._posts) == 0:
+            self._next_code = 1
+        else:
+            max_code = max((p.code for p in self._posts), default = 0)
+            self._next_code = max_code + 1
+
     def _load_all_from_disk(self):
-        """Return all posts stored on disk, sorted by code ascending."""
-        posts = []
-        if not os.path.exists(self.path):
-            return posts
+        """Return all posts stored on disk"""
+        return list(self._posts)
 
-        for fname in os.listdir(self.path):
-            if not fname.endswith(self.ext):
-                continue
-            try:
-                code = int(fname.replace(self.ext, ""))
-            except ValueError:
-                continue
-            p = self._load_single(code)
-            if isinstance(p, Post):
-                posts.append(p)
+    def _write(self, posts):
+        """write current post list to blogs .dat file if autosave enabled"""
+        if not self.autosave:
+            return True
 
-        posts.sort(key=lambda p: p.code)
-        return posts
+        try:
+            with open(self._file, "wb") as f:
+                pickle.dump(self._posts, f)
+            return True
+
+        except Exception:
+            return False
+
 
     # ---------- DAO operations ----------
 
@@ -75,24 +93,31 @@ class PostDAOPickle(PostDAO):
                     return p
             return None
 
-        return self._load_single(key)
+        for p in self._posts:
+            if p.code == key:
+                return p
+        return None
 
     def create_post(self, post):
         """Create a new post. Returns True on success."""
         if not isinstance(post, Post):
-            return False
+            return None
 
-        if not self.autosave:
-            self._posts.append(post)
-            return True
+        if not getattr(post, "code", None):
+            post.code = self._next_code
+            self._next_code += 1
+        else:
+            if post.code >= self._next_code:
+                self._next_code = post.code + 1
 
-        file_name = self._file_name(post.code)
-        try:
-            with open(file_name, "wb") as f:
-                pickle.dump(post, f)
-            return True
-        except Exception:
-            return False
+        self._posts.append(post)
+
+        if self.autosave:
+            write = self._write(self._posts)
+            if not write:
+                self._posts.pop()
+                return None
+        return post
 
     def retrieve_posts(self, search_string):
         """
@@ -121,43 +146,34 @@ class PostDAOPickle(PostDAO):
 
     def update_post(self, key, new_title, new_text):
         """Update title/text of a post. Returns True if updated."""
-        if not self.autosave:
-            for p in self._posts:
-                if p.code == key:
-                    p.update_post(new_title, new_text)
-                    return True
-            return False
+        # find post
+        for p in self._posts:
 
-        p = self._load_single(key)
-        if p is None:
-            return False
+            if p.code == key:
+                p.update_post(new_title, new_text)
 
-        p.update_post(new_title, new_text)
+                # persist list
+                if self.autosave:
+                    return self._write(self._posts)
+                return True
 
-        try:
-            with open(self._file_name(key), "wb") as f:
-                pickle.dump(p, f)
-            return True
-        except Exception:
-            return False
+        return False
 
     def delete_post(self, key):
         """Delete post with given code. Returns True if deleted."""
-        if not self.autosave:
-            for i, p in enumerate(self._posts):
-                if p.code == key:
-                    del self._posts[i]
-                    return True
-            return False
+        deleted = False
+        new_list = []
+        for p in self._posts:
+            if not deleted and p.code == key:
+                deleted = True
+                continue
+            new_list.append(p)
 
-        file_name = self._file_name(key)
-        if os.path.exists(file_name):
-            try:
-                os.remove(file_name)
-                return True
-            except Exception:
-                return False
-        return False
+        if deleted:
+            self._posts = new_list
+            if self.autosave:
+                self._write(self._posts)
+        return deleted
 
     def list_posts(self):
         """
@@ -165,10 +181,4 @@ class PostDAOPickle(PostDAO):
         For determinism we return them sorted by code ASC;
         the controller will sort DESC where needed.
         """
-        if not self.autosave:
-            posts = list(self._posts)
-        else:
-            posts = self._load_all_from_disk()
-
-        posts.sort(key=lambda p: p.code)
-        return posts
+        return sorted(self._posts, key = lambda p: p.code)

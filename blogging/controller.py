@@ -6,7 +6,6 @@ from blogging.post import Post
 from blogging.configuration import Configuration
 
 from blogging.dao.blog_dao_json import BlogDAOJSON
-from blogging.dao.post_dao_pickle import PostDAOPickle
 
 from blogging.exception.invalid_login_exception import InvalidLoginException
 from blogging.exception.duplicate_login_exception import DuplicateLoginException
@@ -30,11 +29,6 @@ class Controller:
 
         # DAOs know whether persistence is enabled
         self.blog_dao = BlogDAOJSON(self.autosave)
-        self.post_dao = PostDAOPickle(self.autosave)
-
-        # compute next post code from whatever is already stored
-        existing = self.post_dao.list_posts()
-        self.next_post_code = max((p.code for p in existing), default=0) + 1
 
         # load users (username, sha256(password)) from config file
         self.users = self._load_users(cfg.__class__.users_file)
@@ -127,6 +121,10 @@ class Controller:
         if blog is None:
             raise IllegalOperationException("cannot update blog with an ID that is not registered")
 
+        #cannot update current blog
+        if self.current_blog is not None and self.current_blog.id == old_id:
+            raise IllegalOperationException("cannot update the current blog")
+
         # new id must be unused (unless unchanged)
         if new_id != old_id and self.blog_dao.search_blog(new_id):
             raise IllegalOperationException("cannot update blog with a duplicated ID")
@@ -145,6 +143,10 @@ class Controller:
         if blog is None:
             # id not registered
             raise IllegalOperationException("cannot delete blog with an ID that is not registered")
+
+        #ensure blog deletion is not current blog
+        if self.current_blog is not None and self.current_blog.id == id:
+            raise IllegalOperationException("cannot delete the current blog")
 
         return self.blog_dao.delete_blog(id)
 
@@ -174,25 +176,22 @@ class Controller:
         self._ensure_logged_in()
         self._ensure_current_blog()
 
-        code = self.next_post_code
-        self.next_post_code += 1
-
-        post = Post(code, title, text, datetime.now(), datetime.now())
+        post = Post(0, title, text, datetime.now(), datetime.now())
         # controller_test + integration_test only ever use one blog for posts,
         # so the DAO does not need the blog id here.
-        self.post_dao.create_post(post)
+        self.current_blog.add_post(post)
         return post
 
     def search_post(self, code):
         self._ensure_logged_in()
         self._ensure_current_blog()
-        return self.post_dao.search_post(code)
+        return self.current_blog.get_post(code)
 
     def retrieve_posts(self, key):
         self._ensure_logged_in()
         self._ensure_current_blog()
 
-        posts = self.post_dao.retrieve_posts(key)
+        posts = self.current_blog.retrieve_post(key)
         # tests expect ascending order of codes for retrieve_posts
         posts.sort(key=lambda p: p.code)
         return posts
@@ -202,26 +201,27 @@ class Controller:
         self._ensure_current_blog()
 
         # cannot update if there are no posts for that blog in the system
-        if len(self.post_dao.list_posts()) == 0:
+        if len(self.current_blog.list_posts()) == 0:
             return False
 
-        return self.post_dao.update_post(code, new_title, new_text)
+        # Delegate the actual update (and persistence) to the DAO
+        return self.current_blog.post_dao.update_post(code, new_title, new_text)
 
     def delete_post(self, code):
         self._ensure_logged_in()
         self._ensure_current_blog()
 
         # if there are no posts at all, we just return False
-        if len(self.post_dao.list_posts()) == 0:
+        if len(self.current_blog.list_posts()) == 0:
             return False
 
-        return self.post_dao.delete_post(code)
+        return self.current_blog.remove_post(code)
 
     def list_posts(self):
         self._ensure_logged_in()
         self._ensure_current_blog()
 
-        posts = self.post_dao.list_posts()
+        posts = self.current_blog.list_posts()
         # Tests expect list_posts in descending order of code
         posts.sort(key=lambda p: p.code, reverse=True)
         return posts
