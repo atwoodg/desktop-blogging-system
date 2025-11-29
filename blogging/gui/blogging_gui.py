@@ -1,225 +1,246 @@
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox
 from blogging.controller import Controller
-from blogging.exception.invalid_login_exception import InvalidLoginException
-from blogging.exception.invalid_logout_exception import InvalidLogoutException
-from blogging.exception.no_current_blog_exception import NoCurrentBlogException
-from blogging.exception.illegal_operation_exception import IllegalOperationException
-from blogging.exception.illegal_access_exception import IllegalAccessException
 
 class BloggingGUI:
-    def __init__(self):
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Assignment 5 Blog System")
         self.controller = Controller()
-        self.win = tk.Tk()
-        self.win.title("Blogging System")
-        self.win.geometry("820x620")
-        self.win.configure(bg="#f4f4f4")
+        self.current_blog_id = None
 
-        # create main containers
-        self.top_frame = tk.Frame(self.win, bg="#f4f4f4")
-        self.top_frame.pack(fill="x", pady=10)
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.pack(fill="both", expand=True)
 
-        self.middle_frame = tk.Frame(self.win, bg="#f4f4f4")
-        self.middle_frame.pack(fill="both", expand=True)
+        self.make_login_screen()
 
-        self.bottom_frame = tk.Frame(self.win, bg="#f4f4f4")
-        self.bottom_frame.pack(fill="x", pady=10)
+    # ---------------------- LOGIN SCREEN ----------------------
+    def make_login_screen(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
 
-        # status label
-        self.status_label = tk.Label(self.bottom_frame, text="Not logged in", fg="red", bg="#f4f4f4")
-        self.status_label.pack()
+        tk.Label(self.main_frame, text="Login", font=("Arial", 16)).pack(pady=10)
 
-        # call UI setup
-        self.make_login_box()
-        self.make_blog_panel()
+        tk.Label(self.main_frame, text="Username:").pack()
+        self.username_entry = tk.Entry(self.main_frame)
+        self.username_entry.pack()
 
-    # ---------------- LOGIN PANEL ----------------
-    def make_login_box(self):
-        login_box = tk.LabelFrame(self.top_frame, text="Login", padx=10, pady=10, bg="#f4f4f4")
-        login_box.pack(pady=5)
+        tk.Label(self.main_frame, text="Password:").pack()
+        self.password_entry = tk.Entry(self.main_frame, show="*")
+        self.password_entry.pack()
 
-        tk.Label(login_box, text="Username:", bg="#f4f4f4").grid(row=0, column=0)
-        tk.Label(login_box, text="Password:", bg="#f4f4f4").grid(row=1, column=0)
+        tk.Button(self.main_frame, text="Login", command=self.try_login).pack(pady=10)
 
-        self.user_entry = tk.Entry(login_box, width=20)
-        self.pass_entry = tk.Entry(login_box, width=20, show="*")
-        self.user_entry.grid(row=0, column=1, padx=5)
-        self.pass_entry.grid(row=1, column=1, padx=5)
+    def try_login(self):
+        u = self.username_entry.get().strip()
+        p = self.password_entry.get().strip()
 
-        tk.Button(login_box, text="Login", command=self.do_login, width=10).grid(row=0, column=2, padx=5)
-        tk.Button(login_box, text="Logout", command=self.do_logout, width=10).grid(row=1, column=2, padx=5)
-
-    # ---------------- BLOG PANEL ----------------
-    def make_blog_panel(self):
-        left_frame = tk.LabelFrame(self.middle_frame, text="Blogs", bg="#f4f4f4", padx=10, pady=10)
-        left_frame.pack(side="left", fill="y", padx=10, pady=5)
-
-        right_frame = tk.LabelFrame(self.middle_frame, text="Posts", bg="#f4f4f4", padx=10, pady=10)
-        right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=5)
-
-        # BLOG LIST
-        tk.Label(left_frame, text="Blog List:", bg="#f4f4f4").pack()
-        self.blog_list = tk.Listbox(left_frame, width=30, height=20)
-        self.blog_list.pack(pady=5)
-
-        tk.Button(left_frame, text="Refresh", command=self.load_blogs).pack(pady=2)
-        tk.Button(left_frame, text="Select Blog", command=self.select_blog).pack(pady=2)
-
-        # create blog
-        tk.Label(left_frame, text="Create Blog:", bg="#f4f4f4").pack(pady=(10, 2))
-        self.cb_id = tk.Entry(left_frame, width=20)
-        self.cb_title = tk.Entry(left_frame, width=20)
-        self.cb_name = tk.Entry(left_frame, width=20)
-        self.cb_email = tk.Entry(left_frame, width=20)
-        tk.Label(left_frame, text="ID:", bg="#f4f4f4").pack()
-        self.cb_id.pack()
-        tk.Label(left_frame, text="Title:", bg="#f4f4f4").pack()
-        self.cb_title.pack()
-        tk.Label(left_frame, text="User:", bg="#f4f4f4").pack()
-        self.cb_name.pack()
-        tk.Label(left_frame, text="Email:", bg="#f4f4f4").pack()
-        self.cb_email.pack()
-
-        tk.Button(left_frame, text="Create", command=self.create_blog).pack(pady=4)
-        tk.Button(left_frame, text="Delete", command=self.delete_blog).pack()
-
-        # ---------------- POSTS ----------------
-        tk.Label(right_frame, text="Posts for Current Blog:", bg="#f4f4f4").pack()
-        self.post_list = tk.Listbox(right_frame, width=50, height=12)
-        self.post_list.pack(pady=5)
-
-        # post creation area
-        tk.Label(right_frame, text="Create Post:", bg="#f4f4f4").pack()
-        self.post_title = tk.Entry(right_frame, width=40)
-        self.post_title.pack(pady=2)
-        self.post_text = scrolledtext.ScrolledText(right_frame, width=40, height=6)
-        self.post_text.pack(pady=2)
-
-        tk.Button(right_frame, text="Add Post", command=self.add_post).pack(pady=3)
-        tk.Button(right_frame, text="Delete Selected Post", command=self.delete_post).pack(pady=3)
-
-    # ------------------- LOGIN LOGIC --------------------
-    def do_login(self):
-        u = self.user_entry.get().strip()
-        p = self.pass_entry.get().strip()
         try:
             ok = self.controller.login(u, p)
             if ok:
-                self.status_label.config(text=f"Logged in as {u}", fg="green")
-        except InvalidLoginException:
-            messagebox.showerror("Login", "Invalid username or password.")
-        except IllegalOperationException:
-            messagebox.showerror("Login", "Login failed (operation issue).")
+                self.make_main_menu()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    def do_logout(self):
-        try:
-            self.controller.logout()
-            self.status_label.config(text="Not logged in", fg="red")
-        except InvalidLogoutException:
-            messagebox.showerror("Logout", "Cannot logout (not logged in).")
+    # ---------------------- MAIN MENU ----------------------
+    def make_main_menu(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
 
-    # ------------------- BLOG LOGIC ---------------------
-    def load_blogs(self):
-        self.blog_list.delete(0, tk.END)
+        tk.Label(self.main_frame, text="Blog System", font=("Arial", 16)).pack(pady=10)
+
+        tk.Button(self.main_frame, text="List Blogs", command=self.show_blogs).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="Create Blog", command=self.make_create_blog).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="Delete Blog", command=self.make_delete_blog).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="List Posts", command=self.show_posts).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="Create Post", command=self.make_create_post).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="Delete Post", command=self.make_delete_post).pack(fill="x", padx=50, pady=5)
+        tk.Button(self.main_frame, text="Logout", command=self.logout).pack(fill="x", padx=50, pady=5)
+
+    # ---------------------- BLOG LIST ----------------------
+    def show_blogs(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
+
+        tk.Label(self.main_frame, text="All Blogs", font=("Arial", 16)).pack(pady=10)
+
         try:
             blogs = self.controller.list_blogs()
+            self.blog_listbox = tk.Listbox(self.main_frame, width=60)
+            self.blog_listbox.pack()
+
             for b in blogs:
-                self.blog_list.insert(tk.END, f"{b.id} | {b.title}")
-        except IllegalAccessException:
-            messagebox.showerror("Error", "You must log in first.")
-        except Exception:
-            messagebox.showerror("Error", "Failed to load blogs.")
+                self.blog_listbox.insert("end", f"{b.id} - {b.title}")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+        tk.Button(self.main_frame, text="Select Blog", command=self.select_blog).pack(pady=10)
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack(pady=5)
 
     def select_blog(self):
         try:
-            idx = self.blog_list.curselection()
-            if not idx:
-                messagebox.showwarning("Blog", "Select a blog first.")
-                return
-            row = self.blog_list.get(idx[0])
-            bid = int(row.split("|")[0].strip())
-            self.controller.set_current_blog(bid)
-            self.load_posts()
-        except IllegalOperationException:
-            messagebox.showerror("Blog", "Invalid blog selection.")
-        except Exception:
-            messagebox.showerror("Blog", "Could not select blog.")
+            sel = self.blog_listbox.get(self.blog_listbox.curselection())
+            blog_id = int(sel.split(" - ")[0])
+            self.controller.set_current_blog(blog_id)
+            self.current_blog_id = blog_id
+            messagebox.showinfo("Selected", f"Current blog set to {blog_id}")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    def create_blog(self):
-        try:
-            bid = int(self.cb_id.get().strip())
-            t = self.cb_title.get().strip()
-            n = self.cb_name.get().strip()
-            e = self.cb_email.get().strip()
-            self.controller.create_blog(bid, t, n, e)
-            self.load_blogs()
-        except Exception as ex:
-            messagebox.showerror("Create Blog", f"Error: {ex}")
+    # ---------------------- CREATE BLOG ----------------------
+    def make_create_blog(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
 
-    def delete_blog(self):
+        tk.Label(self.main_frame, text="Create Blog", font=("Arial", 16)).pack(pady=10)
+
+        tk.Label(self.main_frame, text="Blog ID:").pack()
+        self.new_blog_id = tk.Entry(self.main_frame)
+        self.new_blog_id.pack()
+
+        tk.Label(self.main_frame, text="Title:").pack()
+        self.new_blog_title = tk.Entry(self.main_frame)
+        self.new_blog_title.pack()
+
+        tk.Label(self.main_frame, text="Username:").pack()
+        self.new_blog_user = tk.Entry(self.main_frame)
+        self.new_blog_user.pack()
+
+        tk.Label(self.main_frame, text="Email:").pack()
+        self.new_blog_email = tk.Entry(self.main_frame)
+        self.new_blog_email.pack()
+
+        tk.Button(self.main_frame, text="Create", command=self.do_create_blog).pack(pady=10)
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack()
+
+    def do_create_blog(self):
         try:
-            idx = self.blog_list.curselection()
-            if not idx:
-                messagebox.showwarning("Blog", "Select a blog first.")
-                return
-            row = self.blog_list.get(idx[0])
-            bid = int(row.split("|")[0].strip())
+            bid = int(self.new_blog_id.get())
+            title = self.new_blog_title.get().strip()
+            user = self.new_blog_user.get().strip()
+            email = self.new_blog_email.get().strip()
+
+            self.controller.create_blog(bid, title, user, email)
+            messagebox.showinfo("Success", "Blog created.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # ---------------------- DELETE BLOG ----------------------
+    def make_delete_blog(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
+
+        tk.Label(self.main_frame, text="Delete Blog", font=("Arial", 16)).pack(pady=10)
+
+        tk.Label(self.main_frame, text="Blog ID:").pack()
+        self.del_blog_id = tk.Entry(self.main_frame)
+        self.del_blog_id.pack()
+
+        tk.Button(self.main_frame, text="Delete", command=self.do_delete_blog).pack(pady=10)
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack()
+
+    def do_delete_blog(self):
+        try:
+            bid = int(self.del_blog_id.get())
             self.controller.delete_blog(bid)
-            self.load_blogs()
-            self.post_list.delete(0, tk.END)
-        except IllegalOperationException:
-            messagebox.showerror("Delete Blog", "Cannot delete this blog.")
-        except IllegalAccessException:
-            messagebox.showerror("Delete Blog", "You must log in first.")
-        except Exception as ex:
-            messagebox.showerror("Delete Blog", f"Error: {ex}")
+            messagebox.showinfo("Deleted", "Blog deleted.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    # ------------------- POST LOGIC --------------------
-    def load_posts(self):
-        self.post_list.delete(0, tk.END)
+    # ---------------------- LIST POSTS ----------------------
+    def show_posts(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
+
+        tk.Label(self.main_frame, text="Posts", font=("Arial", 16)).pack(pady=10)
+
         try:
             posts = self.controller.list_posts()
+            self.post_list = tk.Listbox(self.main_frame, width=60)
+            self.post_list.pack()
+
             for p in posts:
-                self.post_list.insert(tk.END, f"{p.code}: {p.title}")
-        except NoCurrentBlogException:
-            messagebox.showwarning("Posts", "No blog selected.")
-        except Exception:
-            messagebox.showerror("Posts", "Could not load posts.")
+                self.post_list.insert("end", f"{p.code} - {p.title}")
 
-    def add_post(self):
-        try:
-            t = self.post_title.get().strip()
-            txt = self.post_text.get("1.0", tk.END).strip()
-            if t == "" or txt == "":
-                messagebox.showwarning("Post", "Title and text cannot be empty.")
-                return
-            self.controller.create_post(t, txt)
-            self.post_title.delete(0, tk.END)
-            self.post_text.delete("1.0", tk.END)
-            self.load_posts()
-        except Exception as ex:
-            messagebox.showerror("Post", f"Error: {ex}")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    def delete_post(self):
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack(pady=10)
+
+    # ---------------------- CREATE POST ----------------------
+    def make_create_post(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
+
+        tk.Label(self.main_frame, text="Create Post", font=("Arial", 16)).pack(pady=10)
+
+        tk.Label(self.main_frame, text="Post Code:").pack()
+        self.new_post_code = tk.Entry(self.main_frame)
+        self.new_post_code.pack()
+
+        tk.Label(self.main_frame, text="Title:").pack()
+        self.new_post_title = tk.Entry(self.main_frame)
+        self.new_post_title.pack()
+
+        tk.Label(self.main_frame, text="Text:").pack()
+        self.new_post_text = tk.Entry(self.main_frame)
+        self.new_post_text.pack()
+
+        tk.Button(self.main_frame, text="Create", command=self.do_create_post).pack(pady=10)
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack()
+
+    def do_create_post(self):
         try:
-            idx = self.post_list.curselection()
-            if not idx:
-                messagebox.showwarning("Post", "Select a post first.")
-                return
-            row = self.post_list.get(idx[0])
-            code = int(row.split(":")[0])
+            code = int(self.new_post_code.get())
+            title = self.new_post_title.get().strip()
+            text = self.new_post_text.get().strip()
+
+            self.controller.create_post(code, title, text)
+            messagebox.showinfo("Success", "Post created.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # ---------------------- DELETE POST ----------------------
+    def make_delete_post(self):
+        for w in self.main_frame.winfo_children():
+            w.destroy()
+
+        tk.Label(self.main_frame, text="Delete Post", font=("Arial", 16)).pack(pady=10)
+
+        tk.Label(self.main_frame, text="Post Code:").pack()
+        self.del_post_code = tk.Entry(self.main_frame)
+        self.del_post_code.pack()
+
+        tk.Button(self.main_frame, text="Delete", command=self.do_delete_post).pack(pady=10)
+        tk.Button(self.main_frame, text="Back", command=self.make_main_menu).pack()
+
+    def do_delete_post(self):
+        try:
+            code = int(self.del_post_code.get())
             self.controller.delete_post(code)
-            self.load_posts()
-        except IllegalOperationException:
-            messagebox.showerror("Delete Post", "Cannot delete this post.")
-        except Exception as ex:
-            messagebox.showerror("Delete Post", f"Error: {ex}")
+            messagebox.showinfo("Deleted", "Post deleted.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    # ------------------- RUN --------------------
-    def run(self):
-        self.win.mainloop()
+    # ---------------------- LOGOUT ----------------------
+    def logout(self):
+        try:
+            self.controller.logout()
+            self.current_blog_id = None
+            self.make_login_screen()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+
+
+# ---------------------- MAIN PROGRAM ----------------------
+def main():
+    root = tk.Tk()
+    app = BloggingGUI(root)
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    gui = BloggingGUI()
-    gui.run()
+    main()
