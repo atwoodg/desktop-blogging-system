@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import messagebox
 from blogging.controller import Controller
 
-class BloggingGUI:
 
+class BloggingGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Assignment 5 Blog System")
+
         self.controller = Controller()
         self.current_blog_id = None
 
@@ -17,11 +18,9 @@ class BloggingGUI:
 
     # ---------------------- LOGIN SCREEN ----------------------
     def make_login_screen(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Login", font=("Arial", 16)).pack(pady=10)
-
         tk.Label(self.main_frame, text="Username:").pack()
         self.username_entry = tk.Entry(self.main_frame)
         self.username_entry.pack()
@@ -33,41 +32,41 @@ class BloggingGUI:
         tk.Button(self.main_frame, text="Login", command=self.try_login).pack(pady=10)
 
     def try_login(self):
-        u = self.username_entry.get().strip()
-        p = self.password_entry.get().strip()
+        username = self.username_entry.get()
+        password = self.password_entry.get()
 
         try:
-            ok = self.controller.login(u, p)
-            if ok:
+            if self.controller.login(username, password):
                 self.make_main_menu()
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Login Failed", str(e))
 
     # ---------------------- MAIN MENU ----------------------
     def make_main_menu(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Blog System", font=("Arial", 16)).pack(pady=10)
+        tk.Button(self.main_frame, text="List Blogs", command=self.show_blogs).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="Create Blog", command=self.make_create_blog).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="Delete Blog", command=self.make_delete_blog).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="List Posts", command=self.show_posts).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="Create Post", command=self.make_create_post).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="Delete Post", command=self.make_delete_post).pack(fill="x", pady=5, padx=40)
+        tk.Button(self.main_frame, text="Logout", command=self.logout).pack(fill="x", pady=5, padx=40)
 
-        tk.Button(self.main_frame, text="List Blogs", command=self.show_blogs).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="Create Blog", command=self.make_create_blog).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="Delete Blog", command=self.make_delete_blog).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="List Posts", command=self.show_posts).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="Create Post", command=self.make_create_post).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="Delete Post", command=self.make_delete_post).pack(fill="x", padx=50, pady=5)
-        tk.Button(self.main_frame, text="Logout", command=self.logout).pack(fill="x", padx=50, pady=5)
+    def clear_frame(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
 
     # ---------------------- BLOG LIST ----------------------
     def show_blogs(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="All Blogs", font=("Arial", 16)).pack(pady=10)
 
         try:
             blogs = self.controller.list_blogs()
-            self.blog_listbox = tk.Listbox(self.main_frame, width=60)
+            self.blog_listbox = tk.Listbox(self.main_frame, width=50)
             self.blog_listbox.pack()
 
             for b in blogs:
@@ -91,8 +90,7 @@ class BloggingGUI:
 
     # ---------------------- CREATE BLOG ----------------------
     def make_create_blog(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Create Blog", font=("Arial", 16)).pack(pady=10)
 
@@ -118,9 +116,9 @@ class BloggingGUI:
     def do_create_blog(self):
         try:
             bid = int(self.new_blog_id.get())
-            title = self.new_blog_title.get().strip()
-            user = self.new_blog_user.get().strip()
-            email = self.new_blog_email.get().strip()
+            title = self.new_blog_title.get()
+            user = self.new_blog_user.get()
+            email = self.new_blog_email.get()
 
             self.controller.create_blog(bid, title, user, email)
             messagebox.showinfo("Success", "Blog created.")
@@ -129,8 +127,7 @@ class BloggingGUI:
 
     # ---------------------- DELETE BLOG ----------------------
     def make_delete_blog(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Delete Blog", font=("Arial", 16)).pack(pady=10)
 
@@ -151,18 +148,17 @@ class BloggingGUI:
 
     # ---------------------- LIST POSTS ----------------------
     def show_posts(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Posts", font=("Arial", 16)).pack(pady=10)
 
         try:
             posts = self.controller.list_posts()
-            self.post_list = tk.Listbox(self.main_frame, width=60)
-            self.post_list.pack()
+            self.post_listbox = tk.Listbox(self.main_frame, width=50)
+            self.post_listbox.pack()
 
             for p in posts:
-                self.post_list.insert("end", f"{p.code} - {p.title}")
+                self.post_listbox.insert("end", f"{p.code} - {p.title}")
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -171,8 +167,7 @@ class BloggingGUI:
 
     # ---------------------- CREATE POST ----------------------
     def make_create_post(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Create Post", font=("Arial", 16)).pack(pady=10)
 
@@ -194,9 +189,8 @@ class BloggingGUI:
     def do_create_post(self):
         try:
             code = int(self.new_post_code.get())
-            title = self.new_post_title.get().strip()
-            text = self.new_post_text.get().strip()
-
+            title = self.new_post_title.get()
+            text = self.new_post_text.get()
             self.controller.create_post(code, title, text)
             messagebox.showinfo("Success", "Post created.")
         except Exception as e:
@@ -204,8 +198,7 @@ class BloggingGUI:
 
     # ---------------------- DELETE POST ----------------------
     def make_delete_post(self):
-        for w in self.main_frame.winfo_children():
-            w.destroy()
+        self.clear_frame()
 
         tk.Label(self.main_frame, text="Delete Post", font=("Arial", 16)).pack(pady=10)
 
@@ -232,15 +225,3 @@ class BloggingGUI:
             self.make_login_screen()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-
-
-
-# ---------------------- MAIN PROGRAM ----------------------
-def main():
-    root = tk.Tk()
-    app = BloggingGUI(root)
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
