@@ -1,28 +1,30 @@
-import os
+# blogging/__main__.py
+# Commit 1: enable GUI mode
+
 import sys
-from blogging.cli.blogging_cli import BloggingCLI
-import blogging.gui.blogging_gui
+
+try:
+    from PyQt6.QtWidgets import QApplication
+    from blogging.gui.blogging_gui import BloggingGUI
+except:
+    QApplication = None
+    BloggingGUI = None
+
 
 def main():
-	# You can run either a command-line interface (CLI) 
-	# or a graphical user interface (GUI) to your blogging system.
-	if len(sys.argv) != 2:
-		print('ERROR: wrong number of arguments')
-		print('\nCorrect Command usage:')
-		print('python -m blogging option')
-		print('where option is either cli or gui')
-		sys.exit()
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "gui":
+        if QApplication is None:
+            print("PyQt6 not installed.")
+            return
+        app = QApplication(sys.argv)
+        win = BloggingGUI()
+        win.show()
+        app.exec()
+        return
 
-	if sys.argv[1] == 'cli':
-		BloggingCLI()
-	elif sys.argv[1] == 'gui':
-		blogging.gui.blogging_gui.main()
-	else:
-		print('ERROR: Wrong argument')
-		print('\nCorrect Command usage:')
-		print('python -m blogging option')
-		print('where option is either cli or gui')
+    print("Usage:")
+    print("  python3 -m blogging gui")
 
 
-if __name__ == '__main__':
-	main()
+if __name__ == "__main__":
+    main()
