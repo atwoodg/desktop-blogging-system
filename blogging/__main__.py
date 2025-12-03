@@ -5,11 +5,11 @@ import blogging.gui.blogging_gui
 
 def main():
 	# You can run either a command-line interface (CLI) 
-	# or a graphical user interface (GUI) to your blogging system.
+	# or a graphical user interface (GUI) to your bloggingJSON system.
 	if len(sys.argv) != 2:
 		print('ERROR: wrong number of arguments')
 		print('\nCorrect Command usage:')
-		print('python -m blogging option')
+		print('python -m bloggingJSON option')
 		print('where option is either cli or gui')
 		sys.exit()
 
@@ -20,7 +20,7 @@ def main():
 	else:
 		print('ERROR: Wrong argument')
 		print('\nCorrect Command usage:')
-		print('python -m blogging option')
+		print('python -m bloggingJSON option')
 		print('where option is either cli or gui')
 
 

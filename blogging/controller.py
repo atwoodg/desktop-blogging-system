@@ -1,6 +1,6 @@
 from datetime import datetime
 import hashlib
-
+import os
 from blogging.blog import Blog
 from blogging.post import Post
 from blogging.configuration import Configuration
