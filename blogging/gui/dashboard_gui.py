@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTableView, QHeaderView
+from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import pyqtSignal
 from blogging.blog import Blog
 
@@ -13,36 +14,45 @@ class Dashboard(QWidget):
 
         layout = QVBoxLayout()
         self.setLayout(layout)
-        layout.addWidget(QLabel("BLOG DASHBOARD"))
+
+        self.dash = QWidget()
+        dash_layout = QVBoxLayout()
+        self.dash.setLayout(dash_layout)
+
+        dash_layout.addWidget(QLabel("BLOG DASHBOARD"))
 
         #Search for blog operations
         search_blog_button = QPushButton("Search For Blog")
-        layout.addWidget(search_blog_button)
+        dash_layout.addWidget(search_blog_button)
         search_blog_button.clicked.connect(self.open_search_blog)
 
         #Create new blog operations
         create_blog_button = QPushButton("Create New Blog")
-        layout.addWidget(create_blog_button)
+        dash_layout.addWidget(create_blog_button)
         create_blog_button.clicked.connect(self.open_create_blog)
 
         #Retrieve blog operations
         retrieve_blog_button = QPushButton("Retrieve Blog")
-        layout.addWidget(retrieve_blog_button)
+        dash_layout.addWidget(retrieve_blog_button)
         retrieve_blog_button.clicked.connect(self.open_retrieve_blog)
 
-
+        update_blog_button = QPushButton("Update Blog")
+        dash_layout.addWidget(update_blog_button)
+        update_blog_button.clicked.connect(self.open_update_blog)
 
 
         #LOGOUT OPERATIONS
         logout_button = QPushButton("Logout")
-        layout.addWidget(logout_button)
+        dash_layout.addWidget(logout_button)
         logout_button.clicked.connect(self.clicked_logout.emit)
+
+        layout.addWidget(self.dash)
 
         #CONTENT
         self.content = QWidget()
         self.content_layout = QVBoxLayout()
         self.content.setLayout(self.content_layout)
-        layout.addWidget(self.content)
+        layout.addWidget(self.content, stretch=1)
 
 
 
@@ -92,6 +102,30 @@ class Dashboard(QWidget):
         self.content_layout.addWidget(string_input)
         self.content_layout.addWidget(retrieve_button)
 
+        self.table_view = QTableView()
+
+        retrieve_button.clicked.connect(lambda: self.do_retrieve_blog(string_input.text()))
+
+    def do_retrieve_blog(self, string):
+        self.clear_content()
+        self.content_layout.addWidget(self.table_view)
+
+        try:
+            blogs = self.controller.retrieve_blogs(string)
+
+            table = QStandardItemModel()
+            table.setHorizontalHeaderLabels(["ID", "NAME", "URL", "EMAIL"])
+
+            for b in blogs:
+                row_items = [QStandardItem(str(b.id)), QStandardItem(str(b.name)), QStandardItem(str(b.url)), QStandardItem(str(b.email))]
+
+                table.appendRow(row_items)
+
+            self.table_view.setModel(table)
+
+        except Exception as e:
+            self.content_layout.addWidget(QLabel(str(e)))
+
 
     def open_create_blog(self):
         self.clear_content()
@@ -139,6 +173,83 @@ class Dashboard(QWidget):
 
         except Exception as e:
             self.content_layout.addWidget(QLabel(str(e)))
+
+    def open_update_blog(self):
+        self.clear_content()
+
+        update_label = QLabel("Update Blog")
+        id_label = QLabel("Blog ID:")
+        id_input = QLineEdit()
+        search_button = QPushButton("Search")
+
+        self.content_layout.addWidget(update_label)
+        self.content_layout.addWidget(id_label)
+        self.content_layout.addWidget(id_input)
+        self.content_layout.addWidget(search_button)
+
+        search_button.clicked.connect(lambda: self.open_edit_update_blog(id_input.text()))
+
+
+    def open_edit_update_blog(self, id):
+        self.clear_content()
+        blog = self.controller.search_blog(id)
+
+        update_label = QLabel("Update Blog")
+
+        id_label = QLabel("Blog ID:")
+        id_input = QLineEdit()
+        id_input.setText(str(blog.id))
+
+        name_label = QLabel("Blog Name:")
+        name_input = QLineEdit()
+        name_input.setText(str(blog.name))
+
+        url_label = QLabel("Blog URL:")
+        url_input = QLineEdit()
+        url_input.setText(str(blog.url))
+
+        email_label = QLabel("Blog Email:")
+        email_input = QLineEdit()
+        email_input.setText(str(blog.email))
+
+        update_button = QPushButton("UPDATE")
+
+        self.content_layout.addWidget(update_label)
+        self.content_layout.addWidget(id_label)
+        self.content_layout.addWidget(id_input)
+
+        self.content_layout.addWidget(name_label)
+        self.content_layout.addWidget(name_input)
+
+        self.content_layout.addWidget(url_label)
+        self.content_layout.addWidget(url_input)
+
+        self.content_layout.addWidget(email_label)
+        self.content_layout.addWidget(email_input)
+
+        self.content_layout.addWidget(update_button)
+
+        update_button.clicked.connect(lambda: self.do_update_blog(blog.id, id_input.text(), name_input.text(), url_input.text(), email_input.text()))
+
+    def do_update_blog(self, key, new_id, new_name, new_url, new_email):
+        self.clear_content()
+
+        try:
+            updated = self.controller.update_blog(key, new_id, new_name, new_url, new_email)
+
+            if updated:
+                self.content_layout.addWidget(QLabel("Updated Blog:"))
+                self.content_layout.addWidget(QLabel(f"ID: {new_id}"))
+                self.content_layout.addWidget(QLabel(f"Name: {new_name}"))
+                self.content_layout.addWidget(QLabel(f"URL: {new_url}"))
+                self.content_layout.addWidget(QLabel(f"Email: {new_email}"))
+            else:
+                self.content_layout.addWidget(QLabel("Update Failed"))
+
+        except Exception as e:
+            self.content_layout.addWidget(QLabel(str(e)))
+
+
 
 
     def clear_content(self):
