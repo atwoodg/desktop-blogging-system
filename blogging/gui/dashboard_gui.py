@@ -36,9 +36,16 @@ class Dashboard(QWidget):
         dash_layout.addWidget(retrieve_blog_button)
         retrieve_blog_button.clicked.connect(self.open_retrieve_blog)
 
+        #Update blog operations
         update_blog_button = QPushButton("Update Blog")
         dash_layout.addWidget(update_blog_button)
         update_blog_button.clicked.connect(self.open_update_blog)
+
+        #Delete blog operations
+        self.delete_mode = 0
+        delete_blog_button = QPushButton("Delete Blog")
+        dash_layout.addWidget(delete_blog_button)
+        delete_blog_button.clicked.connect(self.open_delete_blog)
 
 
         #LOGOUT OPERATIONS
@@ -83,7 +90,13 @@ class Dashboard(QWidget):
                 self.content_layout.addWidget(QLabel(f"URL: {blog.url}"))
                 self.content_layout.addWidget(QLabel(f"Email: {blog.email}"))
 
-            else:
+            if self.delete_mode == 1:
+                delete_button = QPushButton("DELETE")
+                self.content_layout.addWidget(delete_button)
+                self.delete_mode = 0
+                delete_button.clicked.connect(lambda: self.do_delete_blog(blog.id))
+
+            elif blog is None:
                 self.content_layout.addWidget(QLabel(f"No blog found"))
 
         except Exception as e:
@@ -249,6 +262,46 @@ class Dashboard(QWidget):
         except Exception as e:
             self.content_layout.addWidget(QLabel(str(e)))
 
+    def open_delete_blog(self):
+        self.clear_content()
+        self.delete_mode = 1
+
+        delete_label = QLabel("Delete Blog")
+        id_label = QLabel("Blog ID:")
+        id_input = QLineEdit()
+        search_button = QPushButton("Search")
+
+        self.content_layout.addWidget(delete_label)
+        self.content_layout.addWidget(id_label)
+        self.content_layout.addWidget(id_input)
+        self.content_layout.addWidget(search_button)
+
+        search_button.clicked.connect(lambda: self.do_search_blog(id_input.text()))
+
+
+
+    def do_delete_blog(self, key):
+        self.clear_content()
+        warning_label = QLabel("Are you sure you want to delete?")
+        self.content_layout.addWidget(warning_label)
+        DELETE_button = QPushButton("DELETE")
+        self.content_layout.addWidget(DELETE_button)
+
+        DELETE_button.clicked.connect(lambda: self.confirm_delete(key))
+
+    def confirm_delete(self, key):
+        self.clear_content()
+
+        try:
+            result_list = self.controller.delete_blog(key)
+
+            if result_list:
+                self.content_layout.addWidget(QLabel("Blog Deleted"))
+            else:
+                self.content_layout.addWidget(QLabel("Blog Not Found"))
+
+        except Exception as e:
+            self.content_layout.addWidget(QLabel(str(e)))
 
 
 
