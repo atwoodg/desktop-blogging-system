@@ -1,14 +1,1 @@
-[
-  {
-    "id": "456",
-    "name": "Another_TEST_Blog",
-    "url": "MyNewBlog.com",
-    "email": "newblog@gmail.com"
-  },
-  {
-    "id": "9876",
-    "name": "Gabes Final Test Blog (UPDATE)",
-    "url": "finaltestblog.com",
-    "email": "finaltestblog@email.com"
-  }
-]
+[]
