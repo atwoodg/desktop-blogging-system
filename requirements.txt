@@ -1,0 +1,5 @@
+Markdown==3.10
+PyQt6==6.10.0
+PyQt6-Qt6==6.10.1
+PyQt6_sip==13.10.2
+qtwidgets==1.1
