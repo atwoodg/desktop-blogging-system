@@ -3,6 +3,8 @@
 ## Overview
 This project implements a blogging system in Python by using the unittest framework, CRUD operations, file persistence, and a PyQt6 GUI.
 
+![Demo](https://github.com/atwoodg/desktop-blogging-system/blob/main/Animation.gif)
+
 ## Features
 - Login/logout
 - Create, search, update, and delete blogs and posts.
