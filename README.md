@@ -25,9 +25,11 @@ git clone https://github.com/atwoodg/desktop-blogging-system.git
 cd desktop-blogging-system
 
 #Windows:
+py -m venv .venv
 .\.venv\Scripts\activate
 
 #macOS/Linux:
+python3 -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
