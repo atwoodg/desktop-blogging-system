@@ -40,6 +40,8 @@ Running the system:
 ```bash
 python -m blogging.gui.blogging_gui
 ```
+User: user
+Password: 123456
 
 ## Tests
 From the project root folder (`group078/`):
